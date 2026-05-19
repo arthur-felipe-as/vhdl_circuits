@@ -33,13 +33,20 @@ architecture A8B of Adder8Bit is
     end component;
         
     signal C: std_logic_vector(6 downto 0);
+    signal B_Comp: std_logic_vector(7 downto 0);
 begin
-  	u1: FullAdd port map(A(0), B(0), Cin, S(0), C(0));
-    u2: FullAdd port map(A(1), B(1), C(0), S(1), C(1));
-    u3: FullAdd port map(A(2), B(2), C(1), S(2), C(2));
-    u4: FullAdd port map(A(3), B(3), C(2), S(3), C(3));
-    u5: FullAdd port map(A(4), B(4), C(3), S(4), C(4));
-    u6: FullAdd port map(A(5), B(5), C(4), S(5), C(5));
-    u7: FullAdd port map(A(6), B(6), C(5), S(6), C(6));
-    u8: FullAdd port map(A(7), B(7), C(6), S(7), Cout);
+    process(B, Cin) is
+    begin
+        for i in 0 to 7 loop
+          B_Comp(i) <= B(i) xor Cin;
+        end loop;
+    end process;
+
+	s0: FullAdd port map(A(0), B_Comp(0), Cin, S(0), C(0));
+    
+	si: for i in 1 to 6 generate
+      sum: FullAdd port map(A(i), B_Comp(i), C(i-1), S(i), C(i));
+    end generate;
+    
+    s7: FullAdd port map(A(7), B_Comp(7), C(6), S(7), Cout);
 end A8B;
