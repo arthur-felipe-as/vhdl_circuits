@@ -20,3 +20,18 @@ begin
         IA <= nMnS or nMS or MnS or MS;
     end process;
 end LE;
+
+-- Designing the Arithmetic Extender
+library IEEE;
+use IEEE.std_logic_1164.all;
+
+entity ArithExt is
+port(
+	B, M, S1, S0: in std_logic;
+    IB: out std_logic);
+end ArithExt;
+
+architecture AE of ArithExt is
+begin
+	IB <= (B xor S0) and not (M or S1);
+end AE;
