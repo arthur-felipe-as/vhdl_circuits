@@ -155,7 +155,7 @@ begin
 	S0: FullAdd port map(A(0), B(0), Cin, S(0), C(0));
     
 	FL: for i in 1 to 14 generate
-      Si: FullAdd port map(A(i), B(i), C(i-1), S(i), C(i));
+    	Si: FullAdd port map(A(i), B(i), C(i-1), S(i), C(i));
     end generate;
     
     S15: FullAdd port map(A(15), B(15), C(14), S(15), Cout);
@@ -167,13 +167,10 @@ use IEEE.std_logic_1164.all;
 
 entity ALU is
 port(
-	C1, C0: in std_logic;
+	C1, C0, Set: in std_logic;
 	Input: in std_logic_vector(15 downto 0);
-    Output0: out std_logic_vector(0 to 6);
-    Output1: out std_logic_vector(0 to 6);
-	 Output2: out std_logic_vector(0 to 6);
-	 Output3: out std_logic_vector(0 to 6);
-	 Ovf: out std_logic);
+    Output0, Output1, Output2, Output3, Output4: out std_logic_vector(0 to 6);
+	Ovf: out std_logic);
 end ALU;
 
 architecture arch of ALU is
@@ -201,21 +198,27 @@ architecture arch of ALU is
     end component;
     
     signal A_in, B_in, F_out: std_logic_vector(15 downto 0); -- Values
-    signal S_in: std_logic_vector(2 downto 0); -- Select
+    signal S_in: std_logic_vector(2 downto 0); -- Select operation
     
     signal IA, IB: std_logic_vector(15 downto 0);
     signal Cin: std_logic;
-	 signal display_data: std_logic_vector(15 downto 0);
+	signal display_data: std_logic_vector(15 downto 0);
 begin
-	S_in <= Input(2 downto 0) when (C1 = '0' and C0 = '0') else S_in;
-	A_in <= Input when (C1 = '0' and C0 = '1') else A_in;
-    B_in <= Input when (C1 = '1' and C0 = '0') else B_in;
+	S_in <= Input(2 downto 0) when (C1 = '0' and C0 = '0' and Set = '1') else S_in;
+	A_in <= Input when (C1 = '0' and C0 = '1' and Set = '1') else A_in;
+    B_in <= Input when (C1 = '1' and C0 = '0' and Set = '1') else B_in;
+    
+    Output4 <= "1011011" when (C1 = '0' and C0 = '0') else
+    		   "1110111" when (C1 = '0' and C0 = '1') else
+               "0011111" when (C1 = '1' and C0 = '0') else
+               "1000111" when (C1 = '1' and C0 = '1');
 
 	LOG: LogComp port map(S_in(2), S_in(1), S_in(0), A_in, B_in, IA, IB, Cin);
     ART: Adder16Bit port map(IA, IB, Cin, F_out, Ovf);
-    process(C1,C0,A_in, B_in, F_out)
-	 begin
-			if (C1 = '0' and C0 = '1') then
+    
+    process(C1, C0, A_in, B_in, F_out)
+	begin
+		if (C1 = '0' and C0 = '1') then
             display_data <= A_in;
 
         elsif (C1 = '1' and C0 = '0') then
@@ -226,10 +229,11 @@ begin
 
         else
             display_data <= (others => '0');
-
+            
         end if;
 	end process;
-	 led0 : display7 port map(display_data(3 downto 0), Output0);
+    
+	led0 : display7 port map(display_data(3 downto 0), Output0);
 
     led1 : display7 port map(display_data(7 downto 4), Output1);
 
@@ -237,5 +241,4 @@ begin
 		  
     led3 : display7 port map(display_data(15 downto 12), Output3);
 
-	 
 end arch;
