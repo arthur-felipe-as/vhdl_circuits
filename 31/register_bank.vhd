@@ -68,25 +68,30 @@ signal operator : std_logic := '0';
 signal address : std_logic_vector(2 downto 0) := "000";
 
 type reg_array is array (7 downto 0) of std_logic_vector(15 downto 0);
-
-attribute ramstyle : string;
-
-signal regs : reg_array := (others => (others => '0'));
-attribute ramstyle of regs : signal is "logic";
-
+signal regs : reg_array;
+signal reset_regs : std_logic := '1';
 signal display_data: std_logic_vector(15 downto 0) := (others => '0');
 
+signal use_output0 : std_logic := '0';
+
+signal display7_output0 : std_logic_vector(6 downto 0) := (others => '0');
+signal output0_normal : std_logic_vector(6 downto 0) := (others => '0');
 begin
 process(clk, ld, Input)
 begin
-if(clk = '1') then
+if(rising_edge(clk)) then
+	if(reset_regs = '1') then
+	regs <= (others => (others => '0'));
+	reset_regs <= '0';
+	end if;
 	if (estado_atual = estado_op) then
+		use_output0 <= '0';
 		display_data(15 downto 8) <= (others => '0');
-		Output4 <= "0100011"; --- o
+		Output4 <= "1100010"; --- o
 		if (Input(0) = escrever) then
-			Output0 <= "0110000"; -- E
+			output0_normal <= "0110000"; -- E
 		else
-			Output0 <= "1110001"; -- L
+			output0_normal <= "1110001"; -- L
 		end if;
 		if(ld = '0') then
 			operator <= Input(0);
@@ -94,8 +99,10 @@ if(clk = '1') then
 		end if;
 		
 	elsif(estado_atual = estado_end) then
+		use_output0 <= '1';
 		Output4 <= "0001000"; --- A
-		display_data(7 downto 0) <= Input(7 downto 0);
+		display_data(2 downto 0) <= Input(2 downto 0);
+		display_data(15 downto 3) <= (others => '0'); 
 		if(ld = '0') then
 			if(operator = escrever) then
 				estado_atual <= estado_escrever;
@@ -106,6 +113,7 @@ if(clk = '1') then
 		address <= Input(2 downto 0);
 		end if;
 	elsif(estado_atual = estado_escrever) then
+		use_output0 <= '1';
 		Output4 <= "0110000"; --- E
 		display_data(15 downto 0) <= Input(15 downto 0);
 		if(ld = '0') then
@@ -113,6 +121,7 @@ if(clk = '1') then
 			estado_atual <= estado_op;
 		end if;
 	elsif(estado_atual =  estado_ler) then
+		use_output0 <= '1';
 		Output4 <= "1110001"; -- L
 		display_data <= regs(to_integer(unsigned(address)));
 		if(ld = '0') then
@@ -124,13 +133,14 @@ if(clk = '1') then
 	end if;
 end if;
 end process;
+	 led0 : display7 port map(display_data(3 downto 0), display7_output0);
 
     led1 : display7 port map(display_data(7 downto 4), Output1);
 
     led2 : display7 port map(display_data(11 downto 8), Output2);
 		  
     led3 : display7 port map(display_data(15 downto 12), Output3);
-
-
+	
+	Output0 <= output0_normal when (use_output0 = '0') else display7_output0; 
 
 end bank;
