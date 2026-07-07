@@ -46,12 +46,13 @@ use ieee.numeric_std.all;
 
 ENTITY media_aritmetica IS
 	Port(
-      clk, ld: in std_logic;
-      switches: in std_logic_vector(15 downto 0);
-      
-      d0,d1,d2,d3,d4 : out std_logic_vector(0 to 6);
-      
-      led : out std_logic
+      clk, ld, ld2 : in std_logic;
+    switches : in std_logic_vector(15 downto 0);
+
+    d0,d1,d2,d3,d4 : out std_logic_vector(0 to 6);
+    led : out std_logic;
+
+    debug_output : out std_logic_vector(15 downto 0)
     	
    	);
     
@@ -68,7 +69,8 @@ component display7 is
 
 
 -- signals e constantes:
-constant X : unsigned(15 downto 0) := to_unsigned(4333,16);
+constant initial_state : unsigned(15 downto 0) := to_unsigned(16#FFFF#,16);
+constant X : unsigned(15 downto 0) := to_unsigned(4333,16); -- Quatro ultimos digitos  da matricula de Arthur. 
 
 signal Y_reg : unsigned(15 downto 0);
 
@@ -82,8 +84,9 @@ signal soma : unsigned(16 downto 0);
 constant mostrar_xy : std_logic_vector(1 downto 0) := "00";
 constant recebe_y : std_logic_vector(1 downto 0) := "01"; 
 constant mostrar_media : std_logic_vector(1 downto 0) := "10";
+constant esperar : std_logic_vector(1 downto 0) := "11";
 
-signal estado_atual : std_logic_vector(1 downto 0) := mostrar_xy;
+signal estado_atual : std_logic_vector(1 downto 0) := esperar;
 
 --fim dos estados
 
@@ -107,15 +110,14 @@ begin
             	led <= '0';
                 
                 
-                
-                if ld = '1' then
+                if ld = '0' then
                 	Y_reg <= unsigned(switches);
                     estado_atual <= mostrar_media;
                 end if;
             
             when mostrar_xy =>
             	led <= '0';
-                if ld = '1' then
+                if ld = '0' then
                 	estado_atual <= recebe_y;
                 end if;
                 
@@ -123,25 +125,32 @@ begin
             
             	led <= '1';
                 
-                if ld = '1' then
-                	estado_atual <= mostrar_xy;
+                if ld = '0' then
+                	estado_atual <= esperar;
 				end if;
                 
+			when esperar =>
+            	led <= '0';
+                
+                if ld2 = '0' then
+                	estado_atual <= mostrar_xy;
+				end if;
+               
             when others =>
             
-            	estado_atual <= mostrar_xy;
+            	estado_atual <= esperar;
                 
             end case;
             
     end if;
 end process;
-            
 
 with estado_atual select
 	display_output <= 
 		X when mostrar_xy,
-        Y_reg when recebe_y,
+        Y_reg when recebe_y,	
         media when mostrar_media,
+        initial_state when esperar,
         X when others;
 
 
@@ -159,5 +168,5 @@ port map(std_logic_vector(display_output(11 downto 8)),d3);
 
 d4_display : display7
 port map(std_logic_vector(display_output(15 downto 12)),d4);
-	
+	debug_output <= std_logic_vector(display_output);
 end behavior;
