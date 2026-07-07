@@ -41,7 +41,7 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 ENTITY register_bank IS
-	port( clk,ld: in std_logic;
+	port( clk,ld1,ld2: in std_logic;
 			Input : in std_logic_vector(15 downto 0);
 			Output0, Output1, Output2, Output3, Output4: out std_logic_vector(0 to 6)
 			);
@@ -57,12 +57,13 @@ component display7 is
 constant escrever : std_logic := '0';
 constant ler : std_logic := '1';
 
-constant estado_op : std_logic_vector := "00";
-constant estado_end : std_logic_vector := "01";
-constant estado_escrever : std_logic_vector := "10";
-constant estado_ler : std_logic_vector := "11";
+constant estado_op : std_logic_vector := "000";
+constant estado_end : std_logic_vector := "001";
+constant estado_escrever : std_logic_vector := "010";
+constant estado_ler : std_logic_vector := "011";
+constant estado_espera : std_logic_vector := "100";
 
-signal estado_atual : std_logic_vector(1 downto 0) := estado_op;
+signal estado_atual : std_logic_vector(2 downto 0) := estado_espera;
 
 signal operator : std_logic := '0';
 signal address : std_logic_vector(2 downto 0) := "000";
@@ -77,14 +78,22 @@ signal use_output0 : std_logic := '0';
 signal display7_output0 : std_logic_vector(6 downto 0) := (others => '0');
 signal output0_normal : std_logic_vector(6 downto 0) := (others => '0');
 begin
-process(clk, ld, Input)
+process(clk, ld1,ld2, Input)
 begin
 if(rising_edge(clk)) then
 	if(reset_regs = '1') then
 	regs <= (others => (others => '0'));
 	reset_regs <= '0';
 	end if;
-	if (estado_atual = estado_op) then
+	if(estado_atual = estado_espera) then
+		use_output0 <= '1';
+		display_data <= "0000000000000000";
+		Output4 <= "0000001";
+		if(ld2 = '0') then
+			estado_atual <= estado_op;
+		end if;
+		
+	elsif (estado_atual = estado_op) then
 		use_output0 <= '0';
 		display_data(15 downto 8) <= (others => '0');
 		Output4 <= "1100010"; --- o
@@ -93,7 +102,7 @@ if(rising_edge(clk)) then
 		else
 			output0_normal <= "1110001"; -- L
 		end if;
-		if(ld = '0') then
+		if(ld1 = '0') then
 			operator <= Input(0);
 			estado_atual <= estado_end;
 		end if;
@@ -103,7 +112,7 @@ if(rising_edge(clk)) then
 		Output4 <= "0001000"; --- A
 		display_data(2 downto 0) <= Input(2 downto 0);
 		display_data(15 downto 3) <= (others => '0'); 
-		if(ld = '0') then
+		if(ld2 = '0') then
 			if(operator = escrever) then
 				estado_atual <= estado_escrever;
 			else 
@@ -116,16 +125,16 @@ if(rising_edge(clk)) then
 		use_output0 <= '1';
 		Output4 <= "0110000"; --- E
 		display_data(15 downto 0) <= Input(15 downto 0);
-		if(ld = '0') then
+		if(ld1 = '0') then
 			regs(to_integer(unsigned(address))) <= Input;
-			estado_atual <= estado_op;
+			estado_atual <= estado_espera;
 		end if;
 	elsif(estado_atual =  estado_ler) then
 		use_output0 <= '1';
 		Output4 <= "1110001"; -- L
 		display_data <= regs(to_integer(unsigned(address)));
-		if(ld = '0') then
-			estado_atual <= estado_op;
+		if(ld1 = '0') then
+			estado_atual <= estado_espera;
 		end if;
 		
 		
