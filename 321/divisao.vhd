@@ -150,12 +150,12 @@ architecture div of divAlgo is
 
 
                 		if(unsigned(out_Reg) = 0) then
-
+							add <= "10";
                    			estado_atual <= estado_final;
 
 
                 		elsif(unsigned(out_Reg) < unsigned(B)) then
-
+							add <= "10";
                     		estado_atual <= estado_final;
 
 
