@@ -39,10 +39,6 @@ architecture div of divAlgo is
     
 	----------------------------------------------
     
-	signal VR : unsigned(15 downto 0); -- resto
-	signal VQ : unsigned(15 downto 0); -- quociente
-    
-    
     signal input_Reg : std_logic_vector(15 downto 0) := (others => '0');
     signal out_Reg : std_logic_vector(15 downto 0) := (others => '0');
     
@@ -60,13 +56,18 @@ architecture div of divAlgo is
         estado_escrever_B,
         estado_zera_Q,
         estado_div_zero,
+        
+        estado_seleciona_QUOCIENTE,
+        estado_seleciona_RESTO,
         estado_escrever_RESTO,
         estado_escrever_QUOCIENTE,
         estado_loop_sub,
+        estado_subtrai,
+        estado_seleciona_Q,
         estado_loop_inc,
         estado_final
     );
-    signal estado_atual : state_type := IDLE;
+    signal estado_atual : state_type := estado_seting;
     
     --------------------------------
     begin
@@ -94,7 +95,6 @@ architecture div of divAlgo is
                     	when estado_seting =>
                         	error_zero <= '0';
                             error_maior <= '0';
-                            VQ <= (others => '0'); -- zera o quociente
                             
                             if(but_previous = '1' and ld = '0') then
                             	input_Reg <= A;
@@ -122,7 +122,7 @@ architecture div of divAlgo is
                             estado_atual <= estado_div_zero;
                             
                         when estado_div_zero =>
-                        	if unsigned(B) = '0' then
+                        	if unsigned(B) = 0 then
                             	error_zero <= '1';
                                 if(but_previous = '1' and ld = '0') then
                                 	estado_atual <= estado_seting;
@@ -141,13 +141,15 @@ architecture div of divAlgo is
                           	add <= "10";
                           	input_Reg <= x"0000";
                           	write <= '1';
-
-                          	estado_atual <= estado_subtracao;
+                            
+							add <= "00";
+                          	estado_atual <= estado_loop_sub;
                         	
+                            
+                            --
+                            
 						when estado_loop_sub =>
-
-                		add <= "00";
-
+                    		add <= "00";
 
                 		if(unsigned(out_Reg) = 0) then
 							add <= "10";
@@ -160,24 +162,37 @@ architecture div of divAlgo is
 
 
                 		else
-                	
-                    		add <= "00";
-                    		input_Reg <= std_logic_vector(unsigned(out_Reg) - unsigned(B));
-                   		 	write <= '1';
-                            
-                    		estado_atual <= estado_loop_inc;
-
-
-                		end if;
-
-                        	
-                        when estado_loop_inc =>
-							add <= "10";
-                          	input_Reg <= std_logic_vector(unsigned(out_Reg) + 1);
-                          	write <= '1';
-
-                          	estado_atual <= estado_subtracao;
                         
+                    		input_Reg <= std_logic_vector(unsigned(out_Reg) - unsigned(B));
+                            estado_atual <= estado_escrever_RESTO;
+                            
+                		end if;
+                        
+                        
+                       when estado_escrever_RESTO =>
+                       
+                       	add <= "00";
+    					write <= '1';
+                        
+                        estado_atual <= estado_seleciona_QUOCIENTE;
+                       --
+
+                        when estado_seleciona_QUOCIENTE =>
+                        	
+                    		add <= "10";
+    						estado_atual <= estado_loop_inc;
+                            
+                        when estado_loop_inc =>
+                        	input_Reg <= std_logic_vector(unsigned(out_Reg) + 1);
+   							write <= '1';
+
+    						estado_atual <= estado_seleciona_RESTO;
+                               
+                            
+                       	when estado_seleciona_RESTO =>
+                        	add <= "00";
+                            estado_atual <= estado_loop_sub;
+                            
                         when estado_final =>
                 			quociente <= out_Reg;
 
@@ -187,7 +202,7 @@ architecture div of divAlgo is
 
            				when others =>
 
-                			estado_atual <= estado_setting;
+                			estado_atual <= estado_seting;
 								
                  
             		end case;
